@@ -2,7 +2,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_timer.h"
+#include "esp_rom_sys.h"
 
 static const char *TAG = "DUST_SENSOR";
 static adc_oneshot_unit_handle_t adc_handle = NULL;
@@ -69,7 +69,7 @@ esp_err_t sensor_dust_read(float *dust_ugm3)
     int adc_reading = 0;
 
     gpio_set_level(dust_led_pin, 1);
-    ets_delay_us(280);
+    esp_rom_delay_us(280);
 
     esp_err_t ret = adc_oneshot_read(adc_handle, dust_adc_channel, &adc_reading);
     if (ret != ESP_OK) {

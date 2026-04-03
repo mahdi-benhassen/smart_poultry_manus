@@ -4,14 +4,14 @@
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
+#include "esp_rom_sys.h"
 
 static const char *TAG = "DHT22_SENSOR";
 static gpio_num_t dht_gpio_pin;
 
-#define DHT_MAX_CYCLES 1000 // Max cycles to wait for a signal
-#define DHT_DATA_BITS 40    // 40 bits of data
+#define DHT_MAX_CYCLES 1000
+#define DHT_DATA_BITS 40
 
-// Moving average filter parameters
 #define MA_WINDOW_SIZE 10
 static float temp_readings[MA_WINDOW_SIZE];
 static float hum_readings[MA_WINDOW_SIZE];
@@ -30,35 +30,33 @@ static void dht_gpio_set_output(void)
 
 static esp_err_t dht_read_data(uint8_t *data)
 {
-    uint8_t i, j;
+    uint8_t j;
     uint64_t low_time, high_time;
 
-    // Send start signal
     dht_gpio_set_output();
     gpio_set_level(dht_gpio_pin, 0);
-    ets_delay_us(18000); // 18ms low
+    esp_rom_delay_us(18000);
     gpio_set_level(dht_gpio_pin, 1);
-    ets_delay_us(40); // 40us high
+    esp_rom_delay_us(40);
     dht_gpio_set_input();
 
-    // DHT22 response: 80us low, 80us high
     low_time = esp_timer_get_time();
     while (gpio_get_level(dht_gpio_pin) == 0) {
-        if (esp_timer_get_time() - low_time > 100) return ESP_FAIL; // Timeout
+        if (esp_timer_get_time() - low_time > 100) return ESP_FAIL;
     }
     high_time = esp_timer_get_time();
     while (gpio_get_level(dht_gpio_pin) == 1) {
-        if (esp_timer_get_time() - high_time > 100) return ESP_FAIL; // Timeout
+        if (esp_timer_get_time() - high_time > 100) return ESP_FAIL;
     }
 
     for (j = 0; j < DHT_DATA_BITS; j++) {
         low_time = esp_timer_get_time();
         while (gpio_get_level(dht_gpio_pin) == 0) {
-            if (esp_timer_get_time() - low_time > 100) return ESP_FAIL; // Timeout
+            if (esp_timer_get_time() - low_time > 100) return ESP_FAIL;
         }
         high_time = esp_timer_get_time();
         while (gpio_get_level(dht_gpio_pin) == 1) {
-            if (esp_timer_get_time() - high_time > 100) return ESP_FAIL; // Timeout
+            if (esp_timer_get_time() - high_time > 100) return ESP_FAIL;
         }
 
         data[j / 8] <<= 1;
@@ -75,7 +73,7 @@ esp_err_t sensor_dht22_init(gpio_num_t dht_pin)
     dht_gpio_pin = dht_pin;
     gpio_config_t io_conf = {
         .pin_bit_mask = (1ULL << dht_gpio_pin),
-        .mode = GPIO_MODE_INPUT_OUTPUT_OD, // Open-drain for DHT22
+        .mode = GPIO_MODE_INPUT_OUTPUT_OD,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE,
@@ -117,7 +115,6 @@ esp_err_t sensor_dht22_read(float *temperature, float *humidity)
         return ESP_FAIL;
     }
 
-    // Apply moving average filter
     temp_readings[ma_index] = current_temperature;
     hum_readings[ma_index] = current_humidity;
     ma_index = (ma_index + 1) % MA_WINDOW_SIZE;
