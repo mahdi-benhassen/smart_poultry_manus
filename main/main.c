@@ -115,7 +115,8 @@ static void sensor_task(void *pvParameters)
 
     while (1) {
         sensor_data_t data;
-        esp_err_t err = sensor_manager_read_all(&data);
+        sensor_manager_read_all();
+        esp_err_t err = sensor_manager_get_data(&data);
         if (err == ESP_OK) {
             xSemaphoreTake(s_data_mutex, portMAX_DELAY);
             memcpy(&s_sensor_data, &data, sizeof(sensor_data_t));

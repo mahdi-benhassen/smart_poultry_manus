@@ -1,4 +1,5 @@
 #include "control_logic.h"
+#include "actuator_alarm.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include <math.h>
