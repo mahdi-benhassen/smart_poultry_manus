@@ -38,7 +38,7 @@ esp_err_t sensor_sound_init(adc_channel_t adc_channel)
     }
 
     adc_oneshot_chan_cfg_t chan_config = {
-        .atten = ADC_ATTEN_DB_11,
+        .atten = ADC_ATTEN_DB_12,
         .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
     ret = adc_oneshot_config_channel(adc_handle, sound_adc_channel, &chan_config);
