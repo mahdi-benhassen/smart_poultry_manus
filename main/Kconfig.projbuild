@@ -1,0 +1,254 @@
+menu "Smart Poultry System Configuration"
+
+config SPS_WIFI_SSID
+    string "WiFi SSID"
+    default "PoultryNet"
+    help
+        SSID for the WiFi network.
+
+config SPS_WIFI_PASSWORD
+    string "WiFi Password"
+    default "poultry123"
+    help
+        Password for the WiFi network.
+
+config SPS_MQTT_BROKER_URI
+    string "MQTT Broker URI"
+    default "mqtt://192.168.1.100:1883"
+    help
+        URI of the MQTT broker.
+
+menu "Sensor Pin Configuration"
+
+config SPS_DHT22_PIN
+    int "DHT22 Data Pin"
+    default 4
+    range 0 39
+    help
+        GPIO pin connected to the DHT22 data line.
+
+config SPS_MQ135_ADC_CHANNEL
+    int "MQ135 ADC Channel"
+    default 0
+    range 0 9
+
+config SPS_MQ7_ADC_CHANNEL
+    int "MQ7 ADC Channel"
+    default 1
+    range 0 9
+
+config SPS_MQ4_ADC_CHANNEL
+    int "MQ4 ADC Channel"
+    default 2
+    range 0 9
+
+config SPS_MQ136_ADC_CHANNEL
+    int "MQ136 ADC Channel"
+    default 3
+    range 0 9
+
+config SPS_DUST_ADC_CHANNEL
+    int "Dust Sensor ADC Channel"
+    default 4
+    range 0 9
+
+config SPS_DUST_LED_PIN
+    int "Dust Sensor LED Pin"
+    default 5
+    range 0 39
+
+config SPS_WATER_LEVEL_ADC_CHANNEL
+    int "Water Level Sensor ADC Channel"
+    default 6
+    range 0 9
+
+config SPS_SOUND_ADC_CHANNEL
+    int "Sound Sensor ADC Channel"
+    default 7
+    range 0 9
+
+config SPS_DOOR_PIN
+    int "Door Sensor Pin"
+    default 18
+    range 0 39
+
+config SPS_I2C_SDA_PIN
+    int "I2C SDA Pin"
+    default 21
+    range 0 39
+
+config SPS_I2C_SCL_PIN
+    int "I2C SCL Pin"
+    default 22
+    range 0 39
+
+endmenu
+
+menu "Actuator Pin Configuration"
+
+config FAN_GPIO
+    int "Main Fan PWM GPIO"
+    default 25
+    range 0 39
+    help
+        GPIO pin for main ventilation fan (PWM via LEDC).
+
+config EXHAUST_FAN_GPIO
+    int "Exhaust Fan GPIO"
+    default 26
+    range 0 39
+
+config HEATER_GPIO
+    int "Heater Relay GPIO"
+    default 27
+    range 0 39
+
+config COOLER_GPIO
+    int "Cooler Relay GPIO"
+    default 14
+    range 0 39
+
+config LIGHT_GPIO
+    int "Light PWM GPIO"
+    default 12
+    range 0 39
+
+config WATER_PUMP_GPIO
+    int "Water Pump Relay GPIO"
+    default 13
+    range 0 39
+
+config FEED_DISPENSER_GPIO
+    int "Feed Dispenser Relay GPIO"
+    default 15
+    range 0 39
+
+config ALARM_GPIO
+    int "Alarm Buzzer GPIO"
+    default 2
+    range 0 39
+
+config DOOR_SERVO_GPIO
+    int "Door Servo PWM GPIO"
+    default 33
+    range 0 39
+
+endmenu
+
+menu "Sensor Thresholds"
+
+config SPS_TEMP_MIN
+    int "Minimum Temperature (Celsius x10)"
+    default 180
+    help
+        Minimum temperature x10 (e.g., 180 = 18.0°C).
+
+config SPS_TEMP_MAX
+    int "Maximum Temperature (Celsius x10)"
+    default 320
+    help
+        Maximum temperature x10 (e.g., 320 = 32.0°C).
+
+config SPS_TEMP_SETPOINT
+    int "Temperature Setpoint (Celsius x10)"
+    default 250
+    help
+        Target temperature x10 (e.g., 250 = 25.0°C).
+
+config SPS_HUMIDITY_MIN
+    int "Minimum Humidity (% x10)"
+    default 500
+
+config SPS_HUMIDITY_MAX
+    int "Maximum Humidity (% x10)"
+    default 700
+
+config SPS_NH3_THRESHOLD
+    int "NH3 Threshold (ppm x10)"
+    default 250
+
+config SPS_CO_THRESHOLD
+    int "CO Threshold (ppm x10)"
+    default 500
+
+config SPS_CO2_THRESHOLD
+    int "CO2 Threshold (ppm)"
+    default 2500
+
+config SPS_METHANE_THRESHOLD
+    int "Methane Threshold (ppm)"
+    default 1000
+
+config SPS_H2S_THRESHOLD
+    int "H2S Threshold (ppm x10)"
+    default 100
+
+config SPS_DUST_THRESHOLD
+    int "Dust Threshold (ug/m3 x10)"
+    default 1500
+
+config SPS_WATER_LEVEL_MIN
+    int "Water Level Min (%)"
+    default 20
+
+config SPS_WATER_LEVEL_MAX
+    int "Water Level Max (%)"
+    default 80
+
+config SPS_SOUND_ALARM_DB
+    int "Sound Alarm Level (dB x10)"
+    default 850
+
+endmenu
+
+menu "PID Controller Gains"
+
+config SPS_PID_KP
+    int "Proportional Gain (x100)"
+    default 500
+    help
+        PID Kp x100 (e.g., 500 = 5.00).
+
+config SPS_PID_KI
+    int "Integral Gain (x100)"
+    default 10
+    help
+        PID Ki x100 (e.g., 10 = 0.10).
+
+config SPS_PID_KD
+    int "Derivative Gain (x100)"
+    default 100
+    help
+        PID Kd x100 (e.g., 100 = 1.00).
+
+endmenu
+
+menu "Light Schedule"
+
+config SPS_LIGHT_ON_HOUR
+    int "Light ON Hour (0-23)"
+    default 6
+    range 0 23
+
+config SPS_LIGHT_OFF_HOUR
+    int "Light OFF Hour (0-23)"
+    default 22
+    range 0 23
+
+endmenu
+
+menu "Feed Schedule"
+
+config SPS_FEED_TIMES_PER_DAY
+    int "Feeding Times Per Day"
+    default 3
+    range 1 6
+
+config SPS_FEED_DURATION_MS
+    int "Feed Dispense Duration (ms)"
+    default 5000
+    range 1000 30000
+
+endmenu
+
+endmenu
