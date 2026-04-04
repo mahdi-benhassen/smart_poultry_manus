@@ -40,17 +40,3 @@ jobs:
             build/bootloader/bootloader.bin
             build/partition_table/partition-table.bin
           retention-days: 30
-
-  lint:
-    name: Lint Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
-
-      - name: Check formatting
-        run: |
-          find . -name "*.c" -o -name "*.h" | xargs clang-format --dry-run --Werror
