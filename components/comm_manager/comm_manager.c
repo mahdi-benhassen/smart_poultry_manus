@@ -5,22 +5,26 @@
 #include "esp_netif.h"
 #include "esp_http_server.h"
 #include "mqtt_client.h"
+#include "config_manager.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "sdkconfig.h"
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 static const char *TAG = "COMM_MGR";
 
 /* ── WiFi config ── */
-#ifndef CONFIG_WIFI_SSID
-#define CONFIG_WIFI_SSID "PoultryNet"
+#ifndef CONFIG_SPS_WIFI_SSID
+#define CONFIG_SPS_WIFI_SSID "PoultryNet"
 #endif
-#ifndef CONFIG_WIFI_PASSWORD
-#define CONFIG_WIFI_PASSWORD "poultry123"
+#ifndef CONFIG_SPS_WIFI_PASSWORD
+#define CONFIG_SPS_WIFI_PASSWORD "poultry123"
 #endif
-#ifndef CONFIG_MQTT_BROKER_URI
-#define CONFIG_MQTT_BROKER_URI "mqtt://192.168.1.100:1883"
+#ifndef CONFIG_SPS_MQTT_BROKER_URI
+#define CONFIG_SPS_MQTT_BROKER_URI "mqtt://192.168.1.100:1883"
 #endif
 
 /* ── MQTT Topics ── */
@@ -47,6 +51,88 @@ static int s_retry_count = 0;
 static sensor_data_t s_cached_sensor = {0};
 static actuator_state_t s_cached_actuator = {0};
 static uint16_t s_cached_aqi = 0;
+static char s_wifi_ssid[33] = {0};
+static char s_wifi_password[65] = {0};
+static char s_mqtt_uri[128] = {0};
+
+static void load_runtime_comm_config(void)
+{
+    strlcpy(s_wifi_ssid, CONFIG_SPS_WIFI_SSID, sizeof(s_wifi_ssid));
+    strlcpy(s_wifi_password, CONFIG_SPS_WIFI_PASSWORD, sizeof(s_wifi_password));
+    strlcpy(s_mqtt_uri, CONFIG_SPS_MQTT_BROKER_URI, sizeof(s_mqtt_uri));
+
+    if (config_get_string("wifi_ssid", s_wifi_ssid, sizeof(s_wifi_ssid)) != ESP_OK) {
+        strlcpy(s_wifi_ssid, CONFIG_SPS_WIFI_SSID, sizeof(s_wifi_ssid));
+    }
+    if (config_get_string("wifi_pass", s_wifi_password, sizeof(s_wifi_password)) != ESP_OK) {
+        strlcpy(s_wifi_password, CONFIG_SPS_WIFI_PASSWORD, sizeof(s_wifi_password));
+    }
+    if (config_get_string("mqtt_uri", s_mqtt_uri, sizeof(s_mqtt_uri)) != ESP_OK) {
+        strlcpy(s_mqtt_uri, CONFIG_SPS_MQTT_BROKER_URI, sizeof(s_mqtt_uri));
+    }
+
+    ESP_LOGI(TAG, "Runtime comm config loaded (ssid=%s, mqtt=%s)", s_wifi_ssid, s_mqtt_uri);
+}
+
+static bool json_extract_int(const char *json, const char *key, int *out)
+{
+    if (json == NULL || key == NULL || out == NULL) return false;
+
+    char pattern[48];
+    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+
+    const char *pos = strstr(json, pattern);
+    if (pos == NULL) return false;
+
+    pos = strchr(pos, ':');
+    if (pos == NULL) return false;
+    pos++;
+
+    while (*pos == ' ' || *pos == '\t') pos++;
+
+    char *endptr = NULL;
+    long val = strtol(pos, &endptr, 10);
+    if (endptr == pos) return false;
+
+    *out = (int)val;
+    return true;
+}
+
+static bool json_extract_bool(const char *json, const char *key, bool *out)
+{
+    if (json == NULL || key == NULL || out == NULL) return false;
+
+    char pattern[48];
+    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+
+    const char *pos = strstr(json, pattern);
+    if (pos == NULL) return false;
+
+    pos = strchr(pos, ':');
+    if (pos == NULL) return false;
+    pos++;
+
+    while (*pos == ' ' || *pos == '\t') pos++;
+
+    if (*pos == '1') {
+        *out = true;
+        return true;
+    }
+    if (*pos == '0') {
+        *out = false;
+        return true;
+    }
+    if (strncasecmp(pos, "true", 4) == 0) {
+        *out = true;
+        return true;
+    }
+    if (strncasecmp(pos, "false", 5) == 0) {
+        *out = false;
+        return true;
+    }
+
+    return false;
+}
 
 /* ══════════════════════════════════════════════════════════════
  *  WiFi Event Handler
@@ -99,14 +185,14 @@ static esp_err_t wifi_init(void)
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
         },
     };
-    strncpy((char *)wifi_config.sta.ssid, CONFIG_WIFI_SSID, sizeof(wifi_config.sta.ssid) - 1);
-    strncpy((char *)wifi_config.sta.password, CONFIG_WIFI_PASSWORD, sizeof(wifi_config.sta.password) - 1);
+    strncpy((char *)wifi_config.sta.ssid, s_wifi_ssid, sizeof(wifi_config.sta.ssid) - 1);
+    strncpy((char *)wifi_config.sta.password, s_wifi_password, sizeof(wifi_config.sta.password) - 1);
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "WiFi STA initialized, connecting to %s", CONFIG_WIFI_SSID);
+    ESP_LOGI(TAG, "WiFi STA initialized, connecting to %s", s_wifi_ssid);
 
     // Wait for connection (with timeout)
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
@@ -167,7 +253,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 static esp_err_t mqtt_init(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = CONFIG_MQTT_BROKER_URI,
+        .broker.address.uri = s_mqtt_uri,
         .credentials.client_id = "esp32_poultry",
         .session.keepalive = 60,
     };
@@ -271,9 +357,59 @@ static esp_err_t http_control_handler(httpd_req_t *req)
 
     ESP_LOGI(TAG, "Control request: %s", buf);
 
-    // Forward to command callback if registered
+    // Parse JSON body and forward as command-topic style callbacks
     if (s_cmd_cb) {
-        s_cmd_cb("http/control", buf, ret);
+        int int_val = 0;
+        bool bool_val = false;
+        char payload[16];
+
+        if (json_extract_int(buf, "fan", &int_val)) {
+            if (int_val < 0) int_val = 0;
+            if (int_val > 100) int_val = 100;
+            snprintf(payload, sizeof(payload), "%d", int_val);
+            s_cmd_cb("poultry/cmd/fan", payload, strlen(payload));
+        }
+
+        if (json_extract_int(buf, "light", &int_val)) {
+            if (int_val < 0) int_val = 0;
+            if (int_val > 100) int_val = 100;
+            snprintf(payload, sizeof(payload), "%d", int_val);
+            s_cmd_cb("poultry/cmd/light", payload, strlen(payload));
+        }
+
+        if (json_extract_bool(buf, "heater", &bool_val)) {
+            snprintf(payload, sizeof(payload), "%d", bool_val ? 1 : 0);
+            s_cmd_cb("poultry/cmd/heater", payload, strlen(payload));
+        }
+
+        if (json_extract_bool(buf, "cooler", &bool_val)) {
+            snprintf(payload, sizeof(payload), "%d", bool_val ? 1 : 0);
+            s_cmd_cb("poultry/cmd/cooler", payload, strlen(payload));
+        }
+
+        const char *ota_key = "\"ota\"";
+        const char *ota_pos = strstr(buf, ota_key);
+        if (ota_pos != NULL) {
+            ota_pos = strchr(ota_pos, ':');
+            if (ota_pos != NULL) {
+                ota_pos++;
+                while (*ota_pos == ' ' || *ota_pos == '\t') ota_pos++;
+                if (*ota_pos == '"') {
+                    ota_pos++;
+                    const char *ota_end = strchr(ota_pos, '"');
+                    if (ota_end != NULL) {
+                        size_t len = ota_end - ota_pos;
+                        if (len > 0) {
+                            char ota_url[256];
+                            size_t cpy = (len < sizeof(ota_url) - 1) ? len : sizeof(ota_url) - 1;
+                            memcpy(ota_url, ota_pos, cpy);
+                            ota_url[cpy] = '\0';
+                            s_cmd_cb("poultry/cmd/ota", ota_url, strlen(ota_url));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     const char *resp = "{\"status\":\"ok\",\"message\":\"Command received\"}";
@@ -326,6 +462,8 @@ static esp_err_t http_init(void)
 esp_err_t comm_manager_init(void)
 {
     esp_err_t err;
+
+    load_runtime_comm_config();
 
     err = wifi_init();
     if (err != ESP_OK) {

@@ -279,10 +279,36 @@ curl -X POST http://<esp32-ip>/api/control -d '{"fan":80}'
 
 | Level | Trigger Conditions | System Response |
 |-------|-------------------|-----------------|
-| **INFO** | AQI > 100, humidity out of range | Log only |
-| **WARNING** | Gas above threshold, temp out of range, low water, sensor spike | Intermittent alarm, MQTT alert |
-| **CRITICAL** | Gas 1.5x threshold, AQI > 300, temp ±5° beyond range | Continuous alarm, boost ventilation to 80% |
-| **EMERGENCY** | CO > 2x, H2S > 2x, temp > max+10 | SOS alarm, max ventilation, all exhaust on |
+| **INFO** | AQI > 100, humidity outside [min,max], or dust ≥ 0.7× threshold | Log only |
+| **WARNING** | Any gas/dust ratio ≥ 1.0×, AQI > 150, temperature outside [min,max], water < min, or spike detected | Intermittent alarm + MQTT alert |
+| **CRITICAL** | Any gas/dust ratio ≥ 1.5×, AQI > 300, temperature deviation ≥ ±5°C, or water < 70% of min | Continuous alarm + forced ventilation ≥ 80% |
+| **EMERGENCY** | CO ≥ 2.0× OR H2S ≥ 2.0× OR temperature deviation ≥ ±10°C OR AQI ≥ 450 | SOS alarm + max ventilation |
+
+### Threshold Logic (Runtime)
+
+The system evaluates thresholds using normalized ratios:
+
+- Gas/dust ratio = measured / threshold for NH3, CO, CO2, CH4, H2S, dust
+- Water ratio = water_level / water_min
+- Temperature deviation = max(temp - temp_max, temp_min - temp)
+
+Alert level is selected by highest severity band:
+
+1. **EMERGENCY** band
+2. **CRITICAL** band
+3. **WARNING** band
+4. **INFO** band
+5. Otherwise **NONE**
+
+### Notification Policy
+
+- MQTT alert notifications are emitted only for **WARNING/CRITICAL/EMERGENCY**.
+- **INFO** remains local log-only (no MQTT alert event).
+- Repeated notifications are rate-limited:
+  - WARNING: 300s
+  - CRITICAL: 60s
+  - EMERGENCY: 30s
+- Immediate notification is still sent when level changes or alert reason changes.
 
 ## Extending the System
 

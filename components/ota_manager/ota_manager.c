@@ -90,6 +90,10 @@ esp_err_t ota_manager_init(void)
 esp_err_t ota_manager_start_update(const char *url)
 {
     if (url == NULL || strlen(url) == 0) return ESP_ERR_INVALID_ARG;
+    if (strncmp(url, "https://", 8) != 0) {
+        ESP_LOGE(TAG, "OTA URL must use HTTPS");
+        return ESP_ERR_INVALID_ARG;
+    }
     if (s_updating) {
         ESP_LOGW(TAG, "OTA already in progress");
         return ESP_ERR_INVALID_STATE;

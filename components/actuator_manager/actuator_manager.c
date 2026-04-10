@@ -8,9 +8,11 @@
 #include "actuator_feed_dispenser.h"
 #include "actuator_alarm.h"
 #include "actuator_door_servo.h"
+#include "config_manager.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "sdkconfig.h"
 #include <string.h>
 
 static const char *TAG = "ACT_MGR";
@@ -41,11 +43,15 @@ static const char *TAG = "ACT_MGR";
 #define CONFIG_ALARM_GPIO           2
 #endif
 #ifndef CONFIG_DOOR_SERVO_GPIO
-#define CONFIG_DOOR_SERVO_GPIO      4
+#define CONFIG_DOOR_SERVO_GPIO      33
+#endif
+#ifndef CONFIG_SPS_FEED_DURATION_MS
+#define CONFIG_SPS_FEED_DURATION_MS 5000
 #endif
 
 static actuator_state_t s_state;
 static SemaphoreHandle_t s_mutex = NULL;
+static uint32_t s_feed_duration_ms = CONFIG_SPS_FEED_DURATION_MS;
 
 esp_err_t actuator_manager_init(void)
 {
@@ -54,6 +60,11 @@ esp_err_t actuator_manager_init(void)
         ESP_LOGE(TAG, "Failed to create mutex");
         return ESP_ERR_NO_MEM;
     }
+
+    int32_t configured_feed_ms = config_get_int_or("feed_dur_ms", CONFIG_SPS_FEED_DURATION_MS);
+    if (configured_feed_ms < 1000) configured_feed_ms = 1000;
+    if (configured_feed_ms > 30000) configured_feed_ms = 30000;
+    s_feed_duration_ms = (uint32_t)configured_feed_ms;
 
     memset(&s_state, 0, sizeof(s_state));
 
@@ -106,7 +117,7 @@ esp_err_t actuator_manager_apply(const actuator_state_t *state)
     actuator_water_pump_set(state->water_pump_on);
 
     if (state->feed_dispenser_on && !actuator_feed_dispenser_is_active()) {
-        actuator_feed_dispenser_dispense(5000); // 5 second dispense
+        actuator_feed_dispenser_dispense(s_feed_duration_ms);
     }
 
     actuator_alarm_set_pattern((alarm_pattern_t)state->alarm_pattern);
