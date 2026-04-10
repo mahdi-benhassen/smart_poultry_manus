@@ -172,6 +172,21 @@ static const float DFLT_PID_KD = CONFIG_PID_KD;
 static const int DFLT_LIGHT_ON_HOUR = CONFIG_LIGHT_ON_HOUR;
 static const int DFLT_LIGHT_OFF_HOUR = CONFIG_LIGHT_OFF_HOUR;
 static const int DFLT_FEED_TIMES_PER_DAY = CONFIG_FEED_TIMES_PER_DAY;
+static const float DFLT_ALERT_WARN_GAS_RATIO = 1.0f;
+static const float DFLT_ALERT_CRIT_GAS_RATIO = 1.5f;
+static const float DFLT_ALERT_EMERG_CO_RATIO = 2.0f;
+static const float DFLT_ALERT_EMERG_H2S_RATIO = 2.0f;
+static const int DFLT_ALERT_INFO_AQI = 100;
+static const int DFLT_ALERT_WARN_AQI = 150;
+static const int DFLT_ALERT_CRIT_AQI = 300;
+static const int DFLT_ALERT_EMERG_AQI = 450;
+static const float DFLT_ALERT_CRIT_TEMP_DELTA_C = 5.0f;
+static const float DFLT_ALERT_EMERG_TEMP_DELTA_C = 10.0f;
+static const float DFLT_ALERT_CRIT_WATER_RATIO = 0.70f;
+static const float DFLT_ALERT_INFO_DUST_RATIO = 0.70f;
+static const int DFLT_ALERT_REPEAT_WARNING_S = 300;
+static const int DFLT_ALERT_REPEAT_CRITICAL_S = 60;
+static const int DFLT_ALERT_REPEAT_EMERGENCY_S = 30;
 
 typedef struct {
     float temp_setpoint;
@@ -195,6 +210,21 @@ typedef struct {
     int light_on_hour;
     int light_off_hour;
     int feed_times_per_day;
+    float alert_warn_gas_ratio;
+    float alert_crit_gas_ratio;
+    float alert_emerg_co_ratio;
+    float alert_emerg_h2s_ratio;
+    int alert_info_aqi;
+    int alert_warn_aqi;
+    int alert_crit_aqi;
+    int alert_emerg_aqi;
+    float alert_crit_temp_delta_c;
+    float alert_emerg_temp_delta_c;
+    float alert_crit_water_ratio;
+    float alert_info_dust_ratio;
+    int alert_repeat_warning_s;
+    int alert_repeat_critical_s;
+    int alert_repeat_emergency_s;
 } runtime_cfg_t;
 
 static runtime_cfg_t s_cfg;
@@ -228,12 +258,66 @@ static void load_runtime_control_config(void)
     s_cfg.light_off_hour = (int)config_get_int_or("light_off_hr", DFLT_LIGHT_OFF_HOUR);
     s_cfg.feed_times_per_day = (int)config_get_int_or("feed_per_day", DFLT_FEED_TIMES_PER_DAY);
 
+    s_cfg.alert_warn_gas_ratio =
+        (float)config_get_int_or("alert_warn_gas_ratio", (int32_t)(DFLT_ALERT_WARN_GAS_RATIO * 100.0f)) / 100.0f;
+    s_cfg.alert_crit_gas_ratio =
+        (float)config_get_int_or("alert_crit_gas_ratio", (int32_t)(DFLT_ALERT_CRIT_GAS_RATIO * 100.0f)) / 100.0f;
+    s_cfg.alert_emerg_co_ratio =
+        (float)config_get_int_or("alert_emerg_co_ratio", (int32_t)(DFLT_ALERT_EMERG_CO_RATIO * 100.0f)) / 100.0f;
+    s_cfg.alert_emerg_h2s_ratio =
+        (float)config_get_int_or("alert_emerg_h2s_ratio", (int32_t)(DFLT_ALERT_EMERG_H2S_RATIO * 100.0f)) / 100.0f;
+
+    s_cfg.alert_info_aqi = (int)config_get_int_or("alert_info_aqi", DFLT_ALERT_INFO_AQI);
+    s_cfg.alert_warn_aqi = (int)config_get_int_or("alert_warn_aqi", DFLT_ALERT_WARN_AQI);
+    s_cfg.alert_crit_aqi = (int)config_get_int_or("alert_crit_aqi", DFLT_ALERT_CRIT_AQI);
+    s_cfg.alert_emerg_aqi = (int)config_get_int_or("alert_emerg_aqi", DFLT_ALERT_EMERG_AQI);
+
+    s_cfg.alert_crit_temp_delta_c =
+        (float)config_get_int_or("alert_crit_temp_d", (int32_t)(DFLT_ALERT_CRIT_TEMP_DELTA_C * 10.0f)) / 10.0f;
+    s_cfg.alert_emerg_temp_delta_c =
+        (float)config_get_int_or("alert_emerg_temp_d", (int32_t)(DFLT_ALERT_EMERG_TEMP_DELTA_C * 10.0f)) / 10.0f;
+    s_cfg.alert_crit_water_ratio =
+        (float)config_get_int_or("alert_crit_water_r", (int32_t)(DFLT_ALERT_CRIT_WATER_RATIO * 100.0f)) / 100.0f;
+    s_cfg.alert_info_dust_ratio =
+        (float)config_get_int_or("alert_info_dust_r", (int32_t)(DFLT_ALERT_INFO_DUST_RATIO * 100.0f)) / 100.0f;
+
+    s_cfg.alert_repeat_warning_s =
+        (int)config_get_int_or("alert_rep_warn_s", DFLT_ALERT_REPEAT_WARNING_S);
+    s_cfg.alert_repeat_critical_s =
+        (int)config_get_int_or("alert_rep_crit_s", DFLT_ALERT_REPEAT_CRITICAL_S);
+    s_cfg.alert_repeat_emergency_s =
+        (int)config_get_int_or("alert_rep_emerg_s", DFLT_ALERT_REPEAT_EMERGENCY_S);
+
     if (s_cfg.feed_times_per_day < 1) s_cfg.feed_times_per_day = 1;
     if (s_cfg.feed_times_per_day > 6) s_cfg.feed_times_per_day = 6;
     if (s_cfg.light_on_hour < 0) s_cfg.light_on_hour = 0;
     if (s_cfg.light_on_hour > 23) s_cfg.light_on_hour = 23;
     if (s_cfg.light_off_hour < 0) s_cfg.light_off_hour = 0;
     if (s_cfg.light_off_hour > 23) s_cfg.light_off_hour = 23;
+
+    if (s_cfg.alert_warn_gas_ratio < 0.5f) s_cfg.alert_warn_gas_ratio = 0.5f;
+    if (s_cfg.alert_crit_gas_ratio < s_cfg.alert_warn_gas_ratio) s_cfg.alert_crit_gas_ratio = s_cfg.alert_warn_gas_ratio;
+    if (s_cfg.alert_emerg_co_ratio < s_cfg.alert_crit_gas_ratio) s_cfg.alert_emerg_co_ratio = s_cfg.alert_crit_gas_ratio;
+    if (s_cfg.alert_emerg_h2s_ratio < s_cfg.alert_crit_gas_ratio) s_cfg.alert_emerg_h2s_ratio = s_cfg.alert_crit_gas_ratio;
+
+    if (s_cfg.alert_info_aqi < 1) s_cfg.alert_info_aqi = 1;
+    if (s_cfg.alert_warn_aqi < s_cfg.alert_info_aqi) s_cfg.alert_warn_aqi = s_cfg.alert_info_aqi;
+    if (s_cfg.alert_crit_aqi < s_cfg.alert_warn_aqi) s_cfg.alert_crit_aqi = s_cfg.alert_warn_aqi;
+    if (s_cfg.alert_emerg_aqi < s_cfg.alert_crit_aqi) s_cfg.alert_emerg_aqi = s_cfg.alert_crit_aqi;
+
+    if (s_cfg.alert_crit_temp_delta_c < 1.0f) s_cfg.alert_crit_temp_delta_c = 1.0f;
+    if (s_cfg.alert_emerg_temp_delta_c < s_cfg.alert_crit_temp_delta_c) {
+        s_cfg.alert_emerg_temp_delta_c = s_cfg.alert_crit_temp_delta_c;
+    }
+
+    if (s_cfg.alert_crit_water_ratio < 0.1f) s_cfg.alert_crit_water_ratio = 0.1f;
+    if (s_cfg.alert_crit_water_ratio > 1.0f) s_cfg.alert_crit_water_ratio = 1.0f;
+    if (s_cfg.alert_info_dust_ratio < 0.1f) s_cfg.alert_info_dust_ratio = 0.1f;
+    if (s_cfg.alert_info_dust_ratio > 2.0f) s_cfg.alert_info_dust_ratio = 2.0f;
+
+    if (s_cfg.alert_repeat_warning_s < 5) s_cfg.alert_repeat_warning_s = 5;
+    if (s_cfg.alert_repeat_critical_s < 5) s_cfg.alert_repeat_critical_s = 5;
+    if (s_cfg.alert_repeat_emergency_s < 5) s_cfg.alert_repeat_emergency_s = 5;
 
     ESP_LOGI(TAG,
              "Runtime cfg: Tset=%.1f Tmin=%.1f Tmax=%.1f Hmin=%.1f Hmax=%.1f Feed=%d/day",
@@ -319,9 +403,9 @@ static float safe_ratio(float value, float threshold)
 static int64_t alert_repeat_interval_us(alert_level_t level)
 {
     switch (level) {
-        case ALERT_LEVEL_WARNING: return 300LL * 1000000LL;
-        case ALERT_LEVEL_CRITICAL: return 60LL * 1000000LL;
-        case ALERT_LEVEL_EMERGENCY: return 30LL * 1000000LL;
+        case ALERT_LEVEL_WARNING: return (int64_t)s_cfg.alert_repeat_warning_s * 1000000LL;
+        case ALERT_LEVEL_CRITICAL: return (int64_t)s_cfg.alert_repeat_critical_s * 1000000LL;
+        case ALERT_LEVEL_EMERGENCY: return (int64_t)s_cfg.alert_repeat_emergency_s * 1000000LL;
         default: return 0;
     }
 }
@@ -654,27 +738,27 @@ static alert_level_t evaluate_alerts(const sensor_data_t *data, uint16_t aqi,
     float temp_high_delta = data->temperature - CONFIG_TEMP_MAX;
     float temp_low_delta = CONFIG_TEMP_MIN - data->temperature;
 
-    if (co_ratio >= 2.0f ||
-        h2s_ratio >= 2.0f ||
-        temp_high_delta >= 10.0f ||
-        temp_low_delta >= 10.0f ||
-        aqi >= 450) {
+    if (co_ratio >= s_cfg.alert_emerg_co_ratio ||
+        h2s_ratio >= s_cfg.alert_emerg_h2s_ratio ||
+        temp_high_delta >= s_cfg.alert_emerg_temp_delta_c ||
+        temp_low_delta >= s_cfg.alert_emerg_temp_delta_c ||
+        aqi >= s_cfg.alert_emerg_aqi) {
         level = ALERT_LEVEL_EMERGENCY;
         snprintf(alert_msg, sizeof(alert_msg),
                  "EMERGENCY: AQI=%d CO=%.1fx H2S=%.1fx Temp=%.1fC",
                  aqi, co_ratio, h2s_ratio, data->temperature);
-    } else if (max_gas_ratio >= 1.5f ||
-               aqi > 300 ||
-               temp_high_delta >= 5.0f ||
-               temp_low_delta >= 5.0f ||
-               water_ratio < 0.70f) {
+    } else if (max_gas_ratio >= s_cfg.alert_crit_gas_ratio ||
+               aqi > s_cfg.alert_crit_aqi ||
+               temp_high_delta >= s_cfg.alert_crit_temp_delta_c ||
+               temp_low_delta >= s_cfg.alert_crit_temp_delta_c ||
+               water_ratio < s_cfg.alert_crit_water_ratio) {
         level = ALERT_LEVEL_CRITICAL;
         snprintf(alert_msg, sizeof(alert_msg),
                  "CRITICAL: %s %.1f/%.1f (%.1fx), AQI=%d Temp=%.1fC Water=%.0f%%",
                  max_gas_name, max_gas_value, max_gas_threshold, max_gas_ratio,
                  aqi, data->temperature, data->water_level_pct);
-    } else if (max_gas_ratio >= 1.0f ||
-               aqi > 150 ||
+    } else if (max_gas_ratio >= s_cfg.alert_warn_gas_ratio ||
+               aqi > s_cfg.alert_warn_aqi ||
                data->temperature > CONFIG_TEMP_MAX ||
                data->temperature < CONFIG_TEMP_MIN ||
                data->water_level_pct < CONFIG_WATER_LEVEL_MIN ||
@@ -684,10 +768,10 @@ static alert_level_t evaluate_alerts(const sensor_data_t *data, uint16_t aqi,
                  "WARNING: %s %.1f/%.1f (%.1fx), AQI=%d Temp=%.1fC Water=%.0f%%",
                  max_gas_name, max_gas_value, max_gas_threshold, max_gas_ratio,
                  aqi, data->temperature, data->water_level_pct);
-    } else if (aqi > 100 ||
+    } else if (aqi > s_cfg.alert_info_aqi ||
                data->humidity < CONFIG_HUMIDITY_MIN ||
                data->humidity > CONFIG_HUMIDITY_MAX ||
-               dust_ratio >= 0.7f) {
+               dust_ratio >= s_cfg.alert_info_dust_ratio) {
         level = ALERT_LEVEL_INFO;
         snprintf(alert_msg, sizeof(alert_msg),
                  "INFO: AQI=%d Hum=%.1f%% Dust=%.1fx",

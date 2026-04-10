@@ -310,6 +310,26 @@ Alert level is selected by highest severity band:
   - EMERGENCY: 30s
 - Immediate notification is still sent when level changes or alert reason changes.
 
+### NVS Tunable Alert Keys
+
+All alert bands and repeat intervals are runtime configurable via NVS (read at boot):
+
+- `alert_warn_gas_ratio` (x100): warning gas/dust ratio trigger, default `100` (=1.00)
+- `alert_crit_gas_ratio` (x100): critical gas/dust ratio trigger, default `150` (=1.50)
+- `alert_emerg_co_ratio` (x100): emergency CO ratio trigger, default `200` (=2.00)
+- `alert_emerg_h2s_ratio` (x100): emergency H2S ratio trigger, default `200` (=2.00)
+- `alert_info_aqi`: INFO AQI trigger, default `100`
+- `alert_warn_aqi`: WARNING AQI trigger, default `150`
+- `alert_crit_aqi`: CRITICAL AQI trigger, default `300`
+- `alert_emerg_aqi`: EMERGENCY AQI trigger, default `450`
+- `alert_crit_temp_d` (x10 °C): critical temperature deviation, default `50` (=5.0°C)
+- `alert_emerg_temp_d` (x10 °C): emergency temperature deviation, default `100` (=10.0°C)
+- `alert_crit_water_r` (x100): critical water/min ratio trigger, default `70` (=0.70)
+- `alert_info_dust_r` (x100): INFO dust ratio trigger, default `70` (=0.70)
+- `alert_rep_warn_s`: WARNING repeat interval seconds, default `300`
+- `alert_rep_crit_s`: CRITICAL repeat interval seconds, default `60`
+- `alert_rep_emerg_s`: EMERGENCY repeat interval seconds, default `30`
+
 ## Extending the System
 
 ### Adding a New Sensor

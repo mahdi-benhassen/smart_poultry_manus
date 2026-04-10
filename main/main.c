@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <strings.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -30,6 +31,16 @@ static sensor_data_t   s_sensor_data;
 static actuator_state_t s_actuator_state;
 static SemaphoreHandle_t s_data_mutex;
 
+static bool payload_to_bool(const char *data, int data_len)
+{
+    if (data == NULL || data_len <= 0) return false;
+    if (data[0] == '1') return true;
+    if (data[0] == '0') return false;
+    if (strncasecmp(data, "true", data_len) == 0) return true;
+    if (strncasecmp(data, "on", data_len) == 0) return true;
+    return false;
+}
+
 /* ══════════════════════════════════════════════════════════════
  *  Alert Callback - forwards alerts to comm_manager
  * ══════════════════════════════════════════════════════════════ */
@@ -50,6 +61,10 @@ static void mqtt_cmd_callback(const char *topic, const char *data, int data_len)
 
     // Handle OTA command: poultry/cmd/ota
     if (strstr(topic, "cmd/ota") != NULL) {
+        if (data_len <= 0) {
+            ESP_LOGW(TAG, "Empty OTA URL payload");
+            return;
+        }
         char url[256] = {0};
         strncpy(url, data, data_len < 255 ? data_len : 255);
         ESP_LOGI(TAG, "OTA update requested: %s", url);
@@ -85,7 +100,7 @@ static void mqtt_cmd_callback(const char *topic, const char *data, int data_len)
 
     // Handle heater: poultry/cmd/heater
     if (strstr(topic, "cmd/heater") != NULL) {
-        bool on = (data[0] == '1' || data[0] == 't');
+        bool on = payload_to_bool(data, data_len);
         xSemaphoreTake(s_data_mutex, portMAX_DELAY);
         s_actuator_state.heater_on = on;
         xSemaphoreGive(s_data_mutex);
@@ -95,7 +110,7 @@ static void mqtt_cmd_callback(const char *topic, const char *data, int data_len)
 
     // Handle cooler: poultry/cmd/cooler
     if (strstr(topic, "cmd/cooler") != NULL) {
-        bool on = (data[0] == '1' || data[0] == 't');
+        bool on = payload_to_bool(data, data_len);
         xSemaphoreTake(s_data_mutex, portMAX_DELAY);
         s_actuator_state.cooler_on = on;
         xSemaphoreGive(s_data_mutex);
@@ -116,7 +131,10 @@ static void sensor_task(void *pvParameters)
 
     while (1) {
         sensor_data_t data;
-        sensor_manager_read_all();
+        esp_err_t read_err = sensor_manager_read_all();
+        if (read_err != ESP_OK) {
+            ESP_LOGW(TAG, "One or more sensor reads failed in this cycle");
+        }
         esp_err_t err = sensor_manager_get_data(&data);
         if (err == ESP_OK) {
             xSemaphoreTake(s_data_mutex, portMAX_DELAY);

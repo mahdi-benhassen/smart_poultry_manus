@@ -52,26 +52,76 @@ esp_err_t sensor_manager_read_all(void)
 {
     if (xSemaphoreTake(s_sensor_data_mutex, portMAX_DELAY) == pdTRUE)
     {
-        // Read from individual sensors and update s_sensor_data
-        sensor_dht22_read(&s_sensor_data.temperature, &s_sensor_data.humidity);
-        sensor_mq135_read(&s_sensor_data.nh3_ppm);
-        sensor_mq7_read(&s_sensor_data.co_ppm);
-        sensor_mq4_read(&s_sensor_data.methane_ppm);
-        sensor_mq136_read(&s_sensor_data.h2s_ppm);
+        esp_err_t status = ESP_OK;
+        esp_err_t err;
+
+        // Read from individual sensors and update s_sensor_data only on success
+        float temp, hum;
+        err = sensor_dht22_read(&temp, &hum);
+        if (err == ESP_OK) {
+            s_sensor_data.temperature = temp;
+            s_sensor_data.humidity = hum;
+        } else {
+            ESP_LOGW(TAG, "DHT22 read failed: %s", esp_err_to_name(err));
+            status = ESP_FAIL;
+        }
+
+        float nh3;
+        err = sensor_mq135_read(&nh3);
+        if (err == ESP_OK) s_sensor_data.nh3_ppm = nh3;
+        else { ESP_LOGW(TAG, "MQ135 read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
+
+        float co;
+        err = sensor_mq7_read(&co);
+        if (err == ESP_OK) s_sensor_data.co_ppm = co;
+        else { ESP_LOGW(TAG, "MQ7 read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
+
+        float ch4;
+        err = sensor_mq4_read(&ch4);
+        if (err == ESP_OK) s_sensor_data.methane_ppm = ch4;
+        else { ESP_LOGW(TAG, "MQ4 read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
+
+        float h2s;
+        err = sensor_mq136_read(&h2s);
+        if (err == ESP_OK) s_sensor_data.h2s_ppm = h2s;
+        else { ESP_LOGW(TAG, "MQ136 read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
 
         float scd40_co2, scd40_temp, scd40_hum;
-        sensor_scd40_read(&scd40_co2, &scd40_temp, &scd40_hum);
-        s_sensor_data.co2_ppm = scd40_co2;
-        // Optionally use SCD40 temp/hum if DHT22 fails or for cross-validation
+        err = sensor_scd40_read(&scd40_co2, &scd40_temp, &scd40_hum);
+        if (err == ESP_OK) {
+            s_sensor_data.co2_ppm = scd40_co2;
+        } else {
+            ESP_LOGW(TAG, "SCD40 read failed: %s", esp_err_to_name(err));
+            status = ESP_FAIL;
+        }
 
-        sensor_dust_read(&s_sensor_data.dust_ugm3);
-        sensor_light_read(&s_sensor_data.light_lux);
-        sensor_water_level_read(&s_sensor_data.water_level_pct);
-        sensor_sound_read(&s_sensor_data.sound_db);
-        sensor_door_read(&s_sensor_data.door_open);
+        float dust;
+        err = sensor_dust_read(&dust);
+        if (err == ESP_OK) s_sensor_data.dust_ugm3 = dust;
+        else { ESP_LOGW(TAG, "Dust read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
+
+        float lux;
+        err = sensor_light_read(&lux);
+        if (err == ESP_OK) s_sensor_data.light_lux = lux;
+        else { ESP_LOGW(TAG, "Light read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
+
+        float water;
+        err = sensor_water_level_read(&water);
+        if (err == ESP_OK) s_sensor_data.water_level_pct = water;
+        else { ESP_LOGW(TAG, "Water level read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
+
+        float sound;
+        err = sensor_sound_read(&sound);
+        if (err == ESP_OK) s_sensor_data.sound_db = sound;
+        else { ESP_LOGW(TAG, "Sound read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
+
+        bool door_open;
+        err = sensor_door_read(&door_open);
+        if (err == ESP_OK) s_sensor_data.door_open = door_open;
+        else { ESP_LOGW(TAG, "Door sensor read failed: %s", esp_err_to_name(err)); status = ESP_FAIL; }
 
         xSemaphoreGive(s_sensor_data_mutex);
-        return ESP_OK;
+        return status;
     }
     ESP_LOGE(TAG, "Failed to take sensor data mutex");
     return ESP_FAIL;

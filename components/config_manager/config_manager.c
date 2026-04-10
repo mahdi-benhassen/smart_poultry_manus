@@ -8,7 +8,7 @@
 static const char *TAG = "CFG_MGR";
 static const char *NVS_NAMESPACE = "poultry_cfg";
 
-#define CONFIG_SCHEMA_VERSION 2
+#define CONFIG_SCHEMA_VERSION 3
 
 #ifndef CONFIG_SPS_WIFI_SSID
 #define CONFIG_SPS_WIFI_SSID "PoultryNet"
@@ -95,6 +95,26 @@ esp_err_t config_manager_load_defaults(void)
 
     // Sound alarm (x10)
     nvs_set_i32(handle, "sound_alarm_db", 850);
+
+    // Alert threshold bands and notification intervals
+    nvs_set_i32(handle, "alert_warn_gas_ratio", 100);  // 1.00x
+    nvs_set_i32(handle, "alert_crit_gas_ratio", 150);  // 1.50x
+    nvs_set_i32(handle, "alert_emerg_co_ratio", 200);  // 2.00x
+    nvs_set_i32(handle, "alert_emerg_h2s_ratio", 200); // 2.00x
+
+    nvs_set_i32(handle, "alert_info_aqi", 100);
+    nvs_set_i32(handle, "alert_warn_aqi", 150);
+    nvs_set_i32(handle, "alert_crit_aqi", 300);
+    nvs_set_i32(handle, "alert_emerg_aqi", 450);
+
+    nvs_set_i32(handle, "alert_crit_temp_d", 50);   // 5.0C
+    nvs_set_i32(handle, "alert_emerg_temp_d", 100); // 10.0C
+    nvs_set_i32(handle, "alert_crit_water_r", 70);  // 0.70
+    nvs_set_i32(handle, "alert_info_dust_r", 70);   // 0.70
+
+    nvs_set_i32(handle, "alert_rep_warn_s", 300);
+    nvs_set_i32(handle, "alert_rep_crit_s", 60);
+    nvs_set_i32(handle, "alert_rep_emerg_s", 30);
 
     // WiFi / MQTT
     nvs_set_str(handle, "wifi_ssid", CONFIG_SPS_WIFI_SSID);
